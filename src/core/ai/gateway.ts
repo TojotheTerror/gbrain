@@ -1365,6 +1365,13 @@ export async function embed(texts: string[], opts?: EmbedOpts): Promise<Float32A
   const tracker = __budgetStore.getStore() ?? null;
   const { model, recipe, modelId } = await resolveEmbeddingProvider(resolveTarget);
   const truncated = texts.map(t => (t ?? '').slice(0, MAX_CHARS));
+  // nomic-embed-text v1.5 is an asymmetric retrieval model. llama.cpp/LM Studio
+  // ignores `input_type` in the request body — prepend the task prefix to the
+  // text client-side. Gate on openai-compatible to leave hosted providers
+  // (ZE, Voyage) that process input_type server-side completely untouched.
+  const prefixed = modelId.includes('nomic-embed-text') && recipe.implementation === 'openai-compatible'
+    ? truncated.map(t => `${opts?.inputType === 'query' ? 'search_query: ' : 'search_document: '}${t}`)
+    : truncated;
 
   // Reserve up front for the worst-case batch token count. Embeddings have
   // no output rate, so maxOutputTokens=0. record() at the end uses the
@@ -1401,8 +1408,8 @@ export async function embed(texts: string[], opts?: EmbedOpts): Promise<Float32A
   // Pre-split is gated on max_batch_tokens. Recipes without it (e.g. OpenAI)
   // ride the fast path: one embedMany call, no recursion safety net.
   const batches = maxBatchTokens
-    ? splitByTokenBudget(truncated, Math.floor(maxBatchTokens * effectiveSafetyFactor(recipe)), charsPerToken)
-    : [truncated];
+    ? splitByTokenBudget(prefixed, Math.floor(maxBatchTokens * effectiveSafetyFactor(recipe)), charsPerToken)
+    : [prefixed];
 
   const allEmbeddings: Float32Array[] = [];
   let _embedThrew = false;

@@ -220,6 +220,9 @@ export function dimsProviderOptions(
       if (modelId === 'text-embedding-v3' || modelId === 'embedding-3') {
         return { openaiCompatible: { dimensions: dims } };
       }
+      if (modelId.includes('nomic-embed-text')) {
+        return { openaiCompatible: { input_type: inputType ?? 'document' } };
+      }
       // MiniMax embo-01 takes a `type: 'db' | 'query'` field for asymmetric
       // retrieval. Today still hardcoded to 'db' for back-compat — opting
       // into the new inputType seam is a follow-up (see plan's deferred

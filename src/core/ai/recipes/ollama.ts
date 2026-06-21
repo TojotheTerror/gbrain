@@ -21,6 +21,11 @@ export const ollama: Recipe = {
       // OLLAMA_NUM_PARALLEL config; no static cap to declare. v0.32 (#779).
       no_batch_cap: true,
     },
+    expansion: {
+      models: [],   // openai-compat tier: model ID not validated — any LM Studio model passes
+      cost_per_1m_tokens_usd: 0,
+      price_last_verified: '2026-06-21',
+    },
   },
   setup_hint: 'Install Ollama from https://ollama.ai, then `ollama pull nomic-embed-text` and `ollama serve`.',
 };
