@@ -38,9 +38,14 @@ Durable, load-bearing facts. Update in place when they change.
   - plus an ollama expansion touchpoint.
   - **Local fork only — NOT intended for an upstream PR.** Treat it as deliberate,
     forward-compat divergence; do not "fix" it by reverting.
-- **Corpus-import mission is paused at Phase A (canary).** Gated on DP1 privacy clearance +
-  the corpus directory. Note: **docling is an external pre-conversion step**, NOT on gbrain's
-  import path; `gbrain import` enumerates only its supported types.
+- **Corpus-import mission: Phase A (canary) PASSED 2026-06-25.** The `b750d3f` asymmetric
+  prefix is empirically proven on the ingest path (`search_document:` on import, `search_query:`
+  on query). **Phase B (import all 5 `test_corpus` books) is the next step** — restore
+  `step1-backup` to drop the canary page, then convert + import.
+- **docling caveat (Phase B blocker, resolved):** the default `docling-parse` backend OOMs
+  (`std::bad_alloc`) on the large textbooks. Use **`docling convert … --pdf-backend pypdfium2`**
+  (plus page-batching / a `pypdf` page subset for big books). docling is an external
+  PDF→markdown pre-conversion step, NOT on gbrain's import path.
 - **`/ship` is not installed locally** (memory `[[ship-not-installed-locally]]`). Fork work
   lands via direct `git` + `gh pr create`. Docs-only fork changes do **not** take a VERSION
   bump (the fork log is separate from upstream releases).
@@ -50,6 +55,51 @@ Durable, load-bearing facts. Update in place when they change.
 ---
 
 ## Entries
+
+### Entry 2 — 2026-06-25 — Phase A canary PASS + runtime re-sync
+
+**Summary:** Ran the Phase A canary against a real PDF and **PROVED** the `b750d3f` asymmetric
+prefix fires on the ingest path; re-synced the installed runtime to carry the warn fix while
+keeping `b750d3f`; verified both. Phase B is now unblocked (separate step).
+
+**1. Stage 1 (read-only gates).** Refreshed `~/.gbrain/*.step1-backup` (clean rollback / Phase-B
+restore point) after a no-holder check. **Embed-config precondition (the load-bearing add from
+the cloud refinement):** verified the installed brain embeds via `nomic-embed-text` on the
+`openai-compatible` (ollama/LM Studio) recipe — the ONLY config under which the `gateway.ts:1372`
+gate can fire — and that the endpoint responds (live embed probe → 768-dim vector). Instrumented
+the installed `gateway.ts` with a one-line `[prefix-check]` after the `prefixed` assignment.
+**DP1:** the canary path (`import`, `query`) is fully local (local nomic embed + local `qwen`
+expansion); `chat_model=anthropic:claude-opus-4-7` is used only by `ask`/reports/enrich/briefing
+→ no cloud chunk egress. Proceeded.
+
+**2. Blocker — docling OOM.** docling's default `docling-parse` backend crashed with
+`std::bad_alloc` on nearly every page of the 10.6 MB / 490-page textbook (~7 GB free of 32 GB →
+a single huge allocation, not total exhaustion). **Resolution:** extracted a 25-page subset via
+`pypdf` → `sample.pdf`, then `docling convert … --pdf-backend pypdfium2 --no-ocr` succeeded
+(165 KB markdown). **Phase B must use `pypdfium2` + page-batching.**
+
+**3. Canary PASS.** `gbrain import` of the converted markdown emitted
+`[prefix-check] search_document: …` on the embed path (the proof). `gbrain query "Yule-Simpson
+Paradox"` emitted `[prefix-check] search_query: …` AND retrieved the canary page at the top
+(score 0.916) — the **full asymmetric pair**, proven end-to-end. **Correction to the cloud's
+static read:** it claimed the query path skips the gate (`dims.ts`); empirically the query
+embedding DOES route through `embed()` with `inputType='query'` → `search_query:`. Evidence over
+static analysis. De-instrumented `gateway.ts` afterward.
+
+**4. Runtime re-sync.** `robocopy <repo>\src node_modules\gbrain\src /MIR` (master `6cf6729e`
+carries both `b750d3f` and the warn fix). Smoke-verified: `gateway.ts` still has the prefixes
+(b750d3f intact), `import.ts` now has `warnUnsupportedDocs` (warn fix live), `gbrain --version`/
+`stats` work, and a raw-PDF `--no-embed` import now **warns** ("⚠ 5 document file(s) … were NOT
+imported") instead of silently dropping. Brain unpolluted (still 2 pages: test + canary).
+
+**Decisions:** canary used 1 doc (smallest, 25-page subset) — canary discipline; DP1 ran but
+proceeded (local path + public textbooks); runtime re-synced before Phase B per the owner's ask.
+
+**State handed to Phase B (next, separate approval):** brain = test page + canary page; runtime
+carries `b750d3f` + warn fix; docling needs `--pdf-backend pypdfium2`. Phase B: restore
+`step1-backup` → convert all 5 via pypdfium2 → import.
+
+**Resulting changes:** operational (no repo code change); this log entry on `fork-activity-log`.
 
 ### Entry 1 — 2026-06-25
 
