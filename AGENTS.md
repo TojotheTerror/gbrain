@@ -127,3 +127,8 @@ use generic placeholders (`alice-example`, `acme-example`, `fund-a`).
 
 If you are a fork, regenerate `llms.txt` + `llms-full.txt` with your own URL base before
 publishing: `LLMS_REPO_BASE=https://raw.githubusercontent.com/your-org/your-fork/main bun run build:llms`.
+
+This fork keeps a living activity & decision log at
+[`docs/fork/FORK_ACTIVITY.md`](./docs/fork/FORK_ACTIVITY.md) — fork-specific divergence,
+standing facts, and a dated entry per session, separate from upstream `CHANGELOG.md`.
+**Resuming work? Read it first, then prepend a new dated entry.**

@@ -137,6 +137,14 @@ gbrain exists to fix. The rules that keep it from recurring:
   llms bundle inlines/links these (config in `scripts/llms-config.ts`); the
   freshness + budget test (`bun test test/build-llms.test.ts`) fails CI otherwise.
 
+## Fork activity & decisions (fork-specific)
+
+This is a fork (`TojotheTerror/gbrain`). Its divergence from upstream and the operational
+context a resuming session needs are recorded in **[`docs/fork/FORK_ACTIVITY.md`](docs/fork/FORK_ACTIVITY.md)**
+— a living, append-only log, separate from upstream `CHANGELOG.md`. It carries the standing
+fork facts (load-bearing patches, paused missions, tooling posture) plus a dated narrative per
+session. **Future sessions: read it FIRST, then prepend a new dated entry.**
+
 ## Search Mode (v0.32.3)
 
 GBrain ships three named search modes that bundle the search-lite knobs from
