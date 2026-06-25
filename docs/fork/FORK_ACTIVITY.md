@@ -9,24 +9,28 @@
 
 **Read this block first; it's the one-screen snapshot a resuming session needs.**
 
-### Current state (as of 2026-06-25)
+### Current state (as of 2026-06-25, Entry 5)
 - **Corpus import: Phase B COMPLETE — go-live ready.** All 5 `test_corpus` textbooks are imported
   + embedded: **15 pages / 1,795 chunks**, clean `<book>/partNN` slugs, retrieval verified across
   the corpus.
+- **Both Entry-4 operator runbooks executed locally (Entry 5).** Transient scratch dirs cleaned
+  (**~169 MB reclaimed**, `gbrain-corpus-final` safety net kept, brain untouched at 15/1,795).
+  The expansion **auth fix was tested and DISPROVEN** — setting `OLLAMA_API_KEY` does **not** clear
+  the warning; core vector retrieval is unaffected. *(Full evidence: Entry 5.)*
 - **PR #4 merged to master** — carries Entries 1–4, this START HERE block, the `CLAUDE.md`
-  pointer to it, and the `test_corpus/` gitignore.
+  pointer to it, and the `test_corpus/` gitignore. **PR #5** (Entry 5) is the intra-fork follow-up.
 
-### Pending operator actions (run LOCALLY on the Windows box, pre-reboot — full runbooks in Entry 4)
-1. **Expansion auth fix** — `gbrain query` logs `[ai.gateway] expansion disabled: invalid
-   x-api-key`, so multi-query expansion is off (core vector retrieval still works). Set
-   `OLLAMA_API_KEY` so it stops erroring. *(Root cause + exact commands: Entry 4.)*
-2. **Transient-dir cleanup** — delete the conversion scratch dirs (~168 MB), **keep** the proven
-   re-import safety net. *(Exact keep/delete list: Entry 4.)*
+### Pending operator actions
+- **None blocking go-live.** Both Entry-4 runbooks are done. The only open item is the
+  expansion-disabled warning, now **deprioritized** (set-key hypothesis disproven; deeper cause;
+  core retrieval works without it — see the standing fact + Entry 5 for the real next lead).
 
 ### Immediate next actions for a resuming session
-1. Execute the two runbooks above (from Entry 4) and verify each.
-2. **Open a NEW branch off `master`** and record the outcomes as **Entry 5** — PR #4's branch is
-   closed once merged, so never reuse `fork-activity-log`.
+1. Nothing operational is pending. If picking up the expansion follow-up, start from Entry 5's
+   "real next lead" (capture LM Studio's server-side request log + diff vs the hand-issued probe),
+   **not** from "set `OLLAMA_API_KEY`" (already disproven).
+2. **Open a NEW branch off `master`** for any new work and record it as the next entry — never
+   reuse a merged branch.
 
 ### Working conventions
 - **One new branch off `master` per session/entry**; newest entry on top.
@@ -38,7 +42,8 @@
 - **textbook→gbrain pipeline:** docling `--pdf-backend pypdfium2 --no-ocr` (default backend OOMs)
   → strip base64 `![...](data:...)` figures → split to <500 KB parts → `gbrain import`. docling is
   external pre-conversion, NOT on gbrain's import path.
-- **Query-expansion requires `OLLAMA_API_KEY`** (see pending action 1).
+- **Query-expansion is disabled (`invalid x-api-key`) and the `OLLAMA_API_KEY` fix is disproven**
+  (Entry 5). Deprioritized; core retrieval is unaffected.
 
 ---
 
@@ -95,15 +100,70 @@ Durable, load-bearing facts. Update in place when they change.
   installed (`[[ship-not-installed-locally]]`); docs-only fork changes take no VERSION bump.
 - **Runtime executes `node_modules/gbrain/src/cli.ts` via a Bun shim** — the `b750d3f` patch
   is live at runtime (`bin → src/cli.ts`).
-- **Open follow-up: query expansion is broken** — `gbrain query` logs `[ai.gateway] expansion
-  disabled: invalid x-api-key`, so multi-query expansion doesn't run (core vector retrieval
-  still works). **Root cause:** the `ollama` recipe declares `OLLAMA_API_KEY` *optional*
-  (`recipes/ollama.ts`); unset, `defaultResolveAuth` sends `Bearer unauthenticated`
-  (`gateway.ts` ~287) which LM Studio rejects. **Fix runbook in Entry 4** (set `OLLAMA_API_KEY`).
+- **Open follow-up (deprioritized): query expansion is disabled** — `gbrain query` logs
+  `[ai.gateway] expansion disabled: [expand] invalid x-api-key`, so multi-query expansion doesn't
+  run. **Core vector retrieval is unaffected** (queries return ranked corpus chunks normally).
+  **The `OLLAMA_API_KEY` hypothesis is DISPROVEN (Entry 5, tested locally):** setting it does not
+  clear the warning; LM Studio accepts any token (incl. `Bearer unauthenticated` → 200) and serves
+  gbrain's exact `generateObject` json_schema request → 200 with `qwen3.5-4b` loaded; embedding and
+  expansion share the *same* `defaultResolveAuth(recipe, cfg.env, …)` (`gateway.ts:316` vs `:1876`)
+  and embedding succeeds in the same process — so `invalid x-api-key` is **misleading, not an auth
+  failure you can set**. **Real next lead (future session):** capture LM Studio's server-side
+  request log for the expansion call and diff it against a hand-issued probe; suspect the
+  openai-compat custom-fetch wrapper (`gateway.ts:2153`). Do NOT re-chase the set-key path.
 
 ---
 
 ## Entries
+
+### Entry 5 — 2026-06-25 — Executed Entry 4's two operator runbooks (local Windows session)
+
+**Summary:** This was the local Windows resume Entry 4's runbooks were written for. Ran both
+on the owner's box (`win32`, local `~/.gbrain`, LM Studio serving). **Runbook 2 (cleanup) is
+done and clean.** **Runbook 1 (expansion auth fix) was executed and its verification FALSIFIED
+the inherited hypothesis** — setting `OLLAMA_API_KEY` does not fix the warning. That falsification
+is the real deliverable: it spares every future session the same dead end.
+
+**Runbook 1 — expansion auth fix: hypothesis DISPROVEN.**
+- Did: `setx OLLAMA_API_KEY ollama` + `$env:OLLAMA_API_KEY='ollama'` (persisted; confirmed a child
+  process inherits the inline value). A fresh **uncached** `gbrain query "…" --expand` *still*
+  logs `[ai.gateway] expansion disabled: [expand] invalid x-api-key`.
+- Ruled out, with evidence:
+  - **LM Studio is not rejecting auth** — a direct `Bearer ollama` chat to `qwen3.5-4b` → 200;
+    a `Bearer unauthenticated` chat → **also 200** (it accepts any/no token).
+  - **Model + capability present** — `qwen3.5-4b` is loaded; gbrain's *exact* expansion request
+    (a `response_format: json_schema` structured call) issued by hand → 200 with valid JSON.
+  - **Env propagation works** — an inline `$env:` value is seen by child processes.
+  - **Not auth at all** — embedding and expansion resolve auth through the *same*
+    `defaultResolveAuth(recipe, cfg.env, …)` (`gateway.ts:316` vs `:1876`); embedding **succeeds in
+    the same `gbrain query` process** that the expansion fails in. `invalid x-api-key` is
+    `normalizeAIError` passing through an underlying message (`errors.ts:54-66`), not a key gbrain
+    can be handed.
+- *Bounded per Entry 4:* stopped at the "deeper cause — don't rabbit-hole" line. Recorded as a
+  deprioritized follow-up (see the standing fact). **Core vector retrieval is unaffected.**
+  The `setx` is harmless (LM Studio ignores the value) — left in place, noted as a no-op.
+- **Real next lead (future session, not this one):** capture LM Studio's server-side request log
+  for the expansion call and diff it against the working hand-issued probe; suspect the
+  openai-compat custom-fetch wrapper (`gateway.ts:2153`).
+
+**Runbook 2 — transient-dir cleanup: DONE.**
+- Deleted `~/gbrain-corpus` (84 MB raw md), `~/gbrain-corpus-split` (84 MB failed 4 MB parts),
+  `~/gbrain-canary` — **~169 MB reclaimed** (matches Entry 4's ~168 MB estimate).
+- **Kept** `~/gbrain-corpus-final` (~4.4 MB proven <500 KB import source / re-import safety net)
+  and `test_corpus/` (5 source PDFs, gitignored — `git check-ignore` confirms).
+- Verified: the three dirs are gone; `gbrain stats` unchanged at **15 pages / 1,795 chunks /
+  1,795 embedded** (brain untouched).
+
+**Decisions:** treated the falsified runbook as a *success of the runbook design* (Entry 4 was
+authored blind in a remote container; runbook 1 existed precisely to test "set the key" against
+real hardware) and corrected the inherited START HERE + standing fact rather than leaving a
+disproven "fix" in the docs; left `setx` in place as a harmless no-op; did not chase the deeper
+expansion cause (bounded per Entry 4).
+
+**Resulting changes:** operational (169 MB reclaimed; brain unchanged); repo changes = this Entry 5
++ the refreshed START HERE block + the corrected expansion standing fact, on a new branch
+`fork-entry-5-runbooks` off `master` → intra-fork **PR #5** into `TojotheTerror/gbrain:master`
+(docs-only — no VERSION bump; never the `garrytan` upstream).
 
 ### Entry 4 — 2026-06-25 — Reboot-resume mechanism + two pending operator runbooks
 
