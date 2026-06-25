@@ -1,5 +1,23 @@
 # TODOS
 
+## Fork-specific follow-ups (TojotheTerror/gbrain — see docs/fork/FORK_ACTIVITY.md)
+
+- [ ] **P3 — `resolver_health` skill-routing lint (filed Entry 6, go-live triage).** `gbrain doctor`
+  full-run FAILs `resolver_health` with 1 error + 67 warnings: `skill-optimizer` is unreachable
+  (no row in `skills/RESOLVER.md`) plus MECE routing-coverage + routing-fixture lints across the
+  skill set. **Brain-independent** (excluded by `gbrain doctor --scope=brain`, which passes exit 0)
+  and pre-existing — fails identically on a fresh upstream clone. Fix is a `skills/` metadata pass
+  (add the `skill-optimizer` RESOLVER row + reconcile `triggers:`/routing fixtures); `gbrain doctor
+  --fix` auto-adds triggers but mutates many shared `SKILL.md` files. Deliberately NOT bundled into
+  a brain go-live entry. Where: `skills/RESOLVER.md` + per-skill frontmatter.
+- [ ] **P3 — expansion `invalid x-api-key` real next lead (Entry 5).** `OLLAMA_API_KEY` fix
+  disproven; non-blocking (core retrieval works). Next: capture LM Studio's server-side request log
+  for the expansion call and diff vs a hand-issued probe; suspect the openai-compat custom-fetch
+  wrapper (`gateway.ts:2153`).
+- [ ] **P3 — schema-pack v2 migration (Entry 6, deferred per owner).** Config declares
+  `gbrain-base-v2`, data typed `gbrain-base@1.0.0`; zero functional impact. Reversible `unify-types`
+  migration available (`gbrain onboard --apply`) if v2 alignment is ever wanted.
+
 ## Pace Mode follow-ups (filed v0.42.49.0)
 
 Deferred from the paced-backfill wave (CEO + eng review CLEARED). Core shipped:
