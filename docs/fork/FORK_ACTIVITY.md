@@ -38,23 +38,75 @@ Durable, load-bearing facts. Update in place when they change.
   - plus an ollama expansion touchpoint.
   - **Local fork only — NOT intended for an upstream PR.** Treat it as deliberate,
     forward-compat divergence; do not "fix" it by reverting.
-- **Corpus-import mission: Phase A (canary) PASSED 2026-06-25.** The `b750d3f` asymmetric
-  prefix is empirically proven on the ingest path (`search_document:` on import, `search_query:`
-  on query). **Phase B (import all 5 `test_corpus` books) is the next step** — restore
-  `step1-backup` to drop the canary page, then convert + import.
-- **docling caveat (Phase B blocker, resolved):** the default `docling-parse` backend OOMs
-  (`std::bad_alloc`) on the large textbooks. Use **`docling convert … --pdf-backend pypdfium2`**
-  (plus page-batching / a `pypdf` page subset for big books). docling is an external
-  PDF→markdown pre-conversion step, NOT on gbrain's import path.
-- **`/ship` is not installed locally** (memory `[[ship-not-installed-locally]]`). Fork work
-  lands via direct `git` + `gh pr create`. Docs-only fork changes do **not** take a VERSION
-  bump (the fork log is separate from upstream releases).
+- **Corpus-import mission: Phase B COMPLETE 2026-06-25.** All 5 `test_corpus` textbooks are
+  imported + embedded (15 pages / 1,795 chunks; clean `<book>/partNN` slugs). Phase A proved the
+  `b750d3f` asymmetric prefix on ingest (`search_document:` import / `search_query:` query);
+  Phase B imported the corpus and verified retrieval across all 5 books.
+- **Textbook→gbrain ingest pipeline (hard-won — see Entry 3):** (1) `docling convert <pdf>
+  --to md --no-ocr --pdf-backend pypdfium2` — the default `docling-parse` backend OOMs
+  (`std::bad_alloc`) on large books; pypdfium2 doesn't. (2) **Strip base64 images** — docling
+  embeds figures as data-URIs (87–98% of file size!); regex-drop `![...](data:...)`. (3) **Split
+  to <500 KB parts** — gbrain page limits are: 5 MB file cap, ~1 MB `tsvector` hard cap, **500 KB
+  `content_sanity.bytes_block`** (above it embedding is skipped), 50 KB warn. (4) `gbrain import`.
+  docling is external pre-conversion, NOT on gbrain's import path.
+- **`gh` is installed (v2.95.0, winget) + authed.** Open fork PRs with `gh pr create --repo
+  TojotheTerror/gbrain --base master --head <branch> --draft` — the `--repo` pin is mandatory
+  (gh otherwise defaults the base to the `garrytan` **upstream**). gh lives at
+  `…\WinGet\Packages\GitHub.cli_…\bin\gh.exe` (PATH needs a fresh shell). `/ship` is still not
+  installed (`[[ship-not-installed-locally]]`); docs-only fork changes take no VERSION bump.
 - **Runtime executes `node_modules/gbrain/src/cli.ts` via a Bun shim** — the `b750d3f` patch
   is live at runtime (`bin → src/cli.ts`).
+- **Open follow-up: query expansion is broken** — `gbrain query` logs `[ai.gateway] expansion
+  disabled: invalid x-api-key`, so multi-query expansion doesn't run (core vector retrieval
+  still works). Worth fixing for go-live retrieval quality.
 
 ---
 
 ## Entries
+
+### Entry 3 — 2026-06-25 — Phase B: full corpus imported (+ go-live prep)
+
+**Summary:** Completed four go-live prerequisites, then imported all 5 `test_corpus` textbooks.
+Final brain: **15 pages / 1,795 chunks, all embedded**; retrieval verified across the corpus.
+Phase B fought several gbrain page-size limits + heavy docling image-bloat before landing.
+
+**Prerequisites (A–D):**
+- **A.** `.gitignore test_corpus/` (the ~75 MB local PDFs are not repo content).
+- **B.** Installed `gh` (v2.95.0, winget) + authed; wired up draft **PR #4** intra-fork — retires
+  the manual-PR friction (gh defaults the base to the upstream; `--repo` pins it to the fork).
+- **C.** Saved the canary learnings as **both** a gbrain note (`dev/docling-large-pdf-oom`,
+  tagged `dev-note`) and a `~/.claude` memory. (Distinction that worried the owner: the brain
+  *page* was textbook content — re-imported in full here; the *learnings* are these findings.)
+- **D.** Dropped the dev pages (`sample` + `test`) surgically (soft-delete → excluded from
+  retrieval) so go-live is the corpus + the dev note.
+
+**Phase B — convert → strip → split → import (each step a resolved blocker):**
+1. **Convert:** `docling … --pdf-backend pypdfium2` converted all 5 full textbooks (~7 min each;
+   the default backend OOMs, pypdfium2 doesn't).
+2. **Three import limits, hit in sequence** (first attempt landed 0 of 5): gbrain's 5 MB file cap;
+   the ~1 MB Postgres `tsvector` hard cap; and the **500 KB `content_sanity.bytes_block`** (above
+   it, embedding is silently skipped — "page lands, 0 chunks"). → split to <500 KB.
+3. **base64 image bloat:** the markdown was 87–98% docling-embedded base64 figures (Manning:
+   37 MB → 0.9 MB after stripping). Regex-stripped `![...](data:...)` — prose/code preserved.
+   Real text is only ~4.5 MB across all 5 books.
+4. **Canary-one-book discipline** (advisor's call after two failed imports): split + imported
+   Foundations alone first (3 pages, 442 chunks, retrieval @0.87) — *then* batched the rest.
+   Final split: 14 parts, all <500 KB.
+5. **Import:** all 5 → 15 pages / 1,795 chunks; **0 errors / 0 oversize / 0 tsvector fails**.
+
+**Retrieval check:** Platform Engineering + Foundations queries hit their exact book; the 3
+closely-related statistics books (two causal + linear models) cross-retrieve among each other —
+expected for overlapping topics. Every query returned a relevant chunk @0.89–0.93.
+
+**Decisions:** stripping base64 was a transparent cleanup, not a route-around — prose preserved;
+docling simply shouldn't embed figures for a text brain (use `--image-export-mode placeholder`
+next time). The canary page was dropped because it would have duplicated Phase B's full import.
+
+**Open follow-up:** `gbrain query` expansion is disabled (`invalid x-api-key`) — degrades
+retrieval quality; core vector search works.
+
+**Resulting changes:** operational (corpus now in `~/.gbrain`; runtime already synced); repo
+changes = this Entry 3 + the gitignore, on `fork-activity-log` (PR #4).
 
 ### Entry 2 — 2026-06-25 — Phase A canary PASS + runtime re-sync
 
