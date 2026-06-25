@@ -41,3 +41,7 @@ test/fixtures/pglite-snapshot.version
 
 # Private brain reports — never check these in (per CLAUDE.md privacy rule)
 reports/network-intelligence/
+
+# Fork-local test corpus: large textbook PDFs used for the canary / Phase-B
+# import. Not repo content — see docs/fork/FORK_ACTIVITY.md.
+test_corpus/
