@@ -9,24 +9,36 @@
 
 **Read this block first; it's the one-screen snapshot a resuming session needs.**
 
-### Current state (as of 2026-06-25)
-- **Corpus import: Phase B COMPLETE — go-live ready.** All 5 `test_corpus` textbooks are imported
-  + embedded: **15 pages / 1,795 chunks**, clean `<book>/partNN` slugs, retrieval verified across
-  the corpus.
-- **PR #4 merged to master** — carries Entries 1–4, this START HERE block, the `CLAUDE.md`
-  pointer to it, and the `test_corpus/` gitignore.
+### Current state (as of 2026-06-25, Entry 6)
+- **GO-LIVE ACCEPTED (Entry 6 — Phase C).** Full health validation passed:
+  `gbrain doctor --scope=brain` = **exit 0, 65/100, all checks OK**; the **agent-facing MCP path
+  proven end-to-end** (`gbrain serve` stdio → `query` op returns corpus chunks, 15 pages /
+  1,795 chunks via the real MCP SDK); retrieval verified across **all 5 books** (each distinctive
+  query hits its own book @0.91–0.93); the load-bearing `b750d3f` asymmetric prefix confirmed live
+  in the runtime.
+- **Doctor full-run reads 35/100 / exit 1 — EXPECTED, not a regression.** The entire gap from the
+  65/100 brain-scope is the `skills/` routing lint (`resolver_health`: 1 err + 67 warn), which is
+  brain-independent and excluded by `--scope=brain`. Brain data is healthy (embed/retrieval 35/35;
+  the `brain_score` 45 is corpus-expected — split textbooks have no wikilinks/timeline/entity pages).
+- **Corpus import: Phase B COMPLETE.** 15 pages / 1,795 chunks, all embedded; clean `<book>/partNN`
+  slugs.
+- **Two non-blocking, documented open items:** (a) expansion disabled (`invalid x-api-key`);
+  `OLLAMA_API_KEY` fix DISPROVEN (Entry 5); deprioritized. (b) schema pack: config declares
+  `gbrain-base-v2`, data typed `gbrain-base@1.0.0` — **zero functional impact**, documented &
+  deferred (owner's call, Entry 6); reversible v2 `unify-types` migration available if ever wanted.
+- **PRs:** PR #4 merged (Entries 1–4). PR #5 (Entry 5) and PR #6 (Entry 6) are intra-fork follow-ups
+  (PR #6 stacks on #5 until #5 merges).
 
-### Pending operator actions (run LOCALLY on the Windows box, pre-reboot — full runbooks in Entry 4)
-1. **Expansion auth fix** — `gbrain query` logs `[ai.gateway] expansion disabled: invalid
-   x-api-key`, so multi-query expansion is off (core vector retrieval still works). Set
-   `OLLAMA_API_KEY` so it stops erroring. *(Root cause + exact commands: Entry 4.)*
-2. **Transient-dir cleanup** — delete the conversion scratch dirs (~168 MB), **keep** the proven
-   re-import safety net. *(Exact keep/delete list: Entry 4.)*
+### Pending operator actions
+- **None.** Go-live is accepted and the brain is healthy. All open items are non-blocking and
+  documented (expansion warning; schema-pack upgrade-available; a separate `skills/` routing-lint
+  cleanup filed in `TODOS.md`).
 
 ### Immediate next actions for a resuming session
-1. Execute the two runbooks above (from Entry 4) and verify each.
-2. **Open a NEW branch off `master`** and record the outcomes as **Entry 5** — PR #4's branch is
-   closed once merged, so never reuse `fork-activity-log`.
+1. Nothing operational is pending — the brain is **go-live accepted**.
+2. Optional non-blocking follow-ups: expansion "real next lead" (Entry 5); schema-pack v2 migration
+   (Entry 6); `skills/` routing-lint cleanup (`resolver_health`, `TODOS.md`). None affect retrieval.
+3. **Open a NEW branch off `master`** for any new work; newest entry on top.
 
 ### Working conventions
 - **One new branch off `master` per session/entry**; newest entry on top.
@@ -38,7 +50,8 @@
 - **textbook→gbrain pipeline:** docling `--pdf-backend pypdfium2 --no-ocr` (default backend OOMs)
   → strip base64 `![...](data:...)` figures → split to <500 KB parts → `gbrain import`. docling is
   external pre-conversion, NOT on gbrain's import path.
-- **Query-expansion requires `OLLAMA_API_KEY`** (see pending action 1).
+- **Query-expansion is disabled (`invalid x-api-key`) and the `OLLAMA_API_KEY` fix is disproven**
+  (Entry 5). Deprioritized; core retrieval is unaffected.
 
 ---
 
@@ -81,6 +94,18 @@ Durable, load-bearing facts. Update in place when they change.
   imported + embedded (15 pages / 1,795 chunks; clean `<book>/partNN` slugs). Phase A proved the
   `b750d3f` asymmetric prefix on ingest (`search_document:` import / `search_query:` query);
   Phase B imported the corpus and verified retrieval across all 5 books.
+- **Go-live ACCEPTED 2026-06-25 (Phase C, Entry 6).** Validated end-to-end: brain-scoped doctor
+  exit 0; agent-facing MCP path proven (`gbrain serve` → `query`); 5/5 books retrieve to their own
+  book @0.91–0.93. **Read the doctor score correctly:** use `gbrain doctor --scope=brain`
+  (**65/100, exit 0**) as the brain-health signal. The full `gbrain doctor` (**35/100, exit 1**) is
+  dragged down by `resolver_health` (1 err + 67 warn) — a **pre-existing `skills/` routing-metadata
+  lint, brain-independent**, that would fail identically on a fresh upstream clone (`skill-optimizer`
+  unreachable + MECE/fixture gaps). It is NOT a brain regression. The `brain_score` 45 (links 0/25,
+  timeline 0/15, orphans 0/15) is **corpus-expected** — a split-textbook corpus has no
+  wikilinks/timeline/entity pages; embed/retrieval is a perfect 35/35. `pgvector` /
+  `embedding_width_consistency` "could not check / skipped" are benign **PGLite** introspection
+  limits. The `skills/` routing-lint cleanup is filed separately in `TODOS.md` — do NOT fold a
+  68-issue shared-`skills/` refactor into a brain entry.
 - **Textbook→gbrain ingest pipeline (hard-won — see Entry 3):** (1) `docling convert <pdf>
   --to md --no-ocr --pdf-backend pypdfium2` — the default `docling-parse` backend OOMs
   (`std::bad_alloc`) on large books; pypdfium2 doesn't. (2) **Strip base64 images** — docling
@@ -95,15 +120,136 @@ Durable, load-bearing facts. Update in place when they change.
   installed (`[[ship-not-installed-locally]]`); docs-only fork changes take no VERSION bump.
 - **Runtime executes `node_modules/gbrain/src/cli.ts` via a Bun shim** — the `b750d3f` patch
   is live at runtime (`bin → src/cli.ts`).
-- **Open follow-up: query expansion is broken** — `gbrain query` logs `[ai.gateway] expansion
-  disabled: invalid x-api-key`, so multi-query expansion doesn't run (core vector retrieval
-  still works). **Root cause:** the `ollama` recipe declares `OLLAMA_API_KEY` *optional*
-  (`recipes/ollama.ts`); unset, `defaultResolveAuth` sends `Bearer unauthenticated`
-  (`gateway.ts` ~287) which LM Studio rejects. **Fix runbook in Entry 4** (set `OLLAMA_API_KEY`).
+- **Open follow-up (deprioritized): query expansion is disabled** — `gbrain query` logs
+  `[ai.gateway] expansion disabled: [expand] invalid x-api-key`, so multi-query expansion doesn't
+  run. **Core vector retrieval is unaffected** (queries return ranked corpus chunks normally).
+  **The `OLLAMA_API_KEY` hypothesis is DISPROVEN (Entry 5, tested locally):** setting it does not
+  clear the warning; LM Studio accepts any token (incl. `Bearer unauthenticated` → 200) and serves
+  gbrain's exact `generateObject` json_schema request → 200 with `qwen3.5-4b` loaded; embedding and
+  expansion share the *same* `defaultResolveAuth(recipe, cfg.env, …)` (`gateway.ts:316` vs `:1876`)
+  and embedding succeeds in the same process — so `invalid x-api-key` is **misleading, not an auth
+  failure you can set**. **Real next lead (future session):** capture LM Studio's server-side
+  request log for the expansion call and diff it against a hand-issued probe; suspect the
+  openai-compat custom-fetch wrapper (`gateway.ts:2153`). Do NOT re-chase the set-key path.
 
 ---
 
 ## Entries
+
+### Entry 6 — 2026-06-25 — Phase C: go-live health validation & acceptance
+
+**Summary:** Ran the first holistic health validation of the corpus brain (the mission had only ever
+proved import + ad-hoc retrieval). Investigated every `gbrain doctor` finding rather than
+blanket-accepting the score, proved the **agent-facing MCP path** end-to-end, and confirmed
+retrieval across all 5 books. **Result: GO-LIVE ACCEPTED.** Authored locally on the Windows box
+(live `~/.gbrain` + LM Studio); the cloud session that refined the plan couldn't run any of it.
+
+**The doctor-score reframe (the headline):** `gbrain doctor` full-run reads **35/100, exit 1**, but
+that is **not** the brain failing. `gbrain doctor --scope=brain` reads **65/100, exit 0, all checks
+OK**. The entire gap is the SKILL category: `resolver_health` FAILs with 1 error + 67 warnings —
+`skill-optimizer` is unreachable (confirmed absent from `skills/RESOLVER.md`) plus MECE
+routing-coverage + routing-fixture lints across the skill set. **This is pre-existing `skills/`
+routing-metadata hygiene, brain-independent — it would fail identically on a fresh upstream clone.**
+Filed as a separate `TODOS.md` follow-up; deliberately NOT folded into this brain entry (it's a
+68-issue shared-`skills/` refactor).
+
+**Each remaining finding investigated & classified:**
+- **`brain_score` 45/100** (links 0/25, timeline 0/15, orphans 0/15) → **corpus-expected**. Proven:
+  `gbrain orphans` = 15/15 (no page has inbound wikilinks), `gbrain check-backlinks` = none missing
+  (no links exist to break). Split textbooks legitimately have no wikilinks/timeline/entity pages.
+  embed/retrieval is a perfect 35/35.
+- **`pgvector` / `embedding_width_consistency` "could not check / skipped"** → benign **PGLite**
+  introspection limits (no extension mechanism); the real embedding signal is coverage 35/35 and
+  the live 768-d vectors. `jsonb_integrity` "could not check" same class; indirect evidence clean
+  (1,795 well-formed embedded chunks, all queries return structured payloads).
+- **`content_sanity_audit_recent` 41 events (24 soft-block / 17 warn)** → all `PAGE_OVERSIZE*`
+  import-guard events: the 24 soft-blocks are abandoned oversize attempts (pre-split hyphenated
+  slugs that never entered the brain), the 17 warns are the accepted 50–500 KB `<book>/partNN`
+  parts. **No chunk loss** — `embedded == chunks == 1,795`. The size guard worked as designed.
+
+**Agent-facing MCP path — PROVEN (the real consumer test):** drove the live brain through the exact
+agent wiring in `~/.claude.json` (`command: gbrain, args: [serve]`, stdio) via the official MCP SDK
+(`StdioClientTransport`). Handshake succeeded; 92 tools exposed incl. `query`/`search`/`get_page`/
+`get_brain_identity`; `get_brain_identity` → 15 pages / 1,795 chunks; `query("platform engineering")`
+returned 13 KB topped by the correct book. CLI passing ≠ MCP passing — this closes that gap.
+
+**Retrieval acceptance — 5/5 books to their own book** (distinctive query each, scores 0.91–0.93,
+in/above the Entry-3 band): Fisher randomization → *a-first-course-in-causal-inference* @0.9218;
+double-ML/Neyman → *applied-causal-inference* @0.9259; SVD/high-dim → *foundations-of-data-science*
+@0.9062; OLS diagnostics → *linear-models-and-extensions* @0.9295; internal developer platform →
+*manning-effective-platform-engineering* @0.9183. The load-bearing `b750d3f` asymmetric prefix is
+**live in the runtime** (`node_modules/gbrain/src/core/ai/gateway.ts:1372–1373`, `search_query:` /
+`search_document:`), and the 0.91+ asymmetric matching is functional proof it fires — so the
+mutating instrument-then-revert re-run was skipped (Entry 2 already proved it directly; code path
+unchanged). The expansion warning still fires (Entry 5's deprioritized item) — core retrieval is
+unaffected.
+
+**Schema-pack decision (owner's call):** config declares `gbrain-base-v2`, but the data is typed
+under `gbrain-base@1.0.0` (the v2 `unify-types` migration was never run). **Zero functional impact**
+— retrieval/embedding/MCP all passed regardless, and the corpus uses only 2 page types. The cloud's
+"v2 is unresolvable → fell back" hypothesis was **disproven** (`gbrain schema active` resolves v2
+from home-config). Per the owner: **document & defer** — mutate nothing; the reversible v2 migration
+(72 h soft-delete TTL + `legacy_type` preservation) stays available if ever wanted.
+
+**Decisions:** investigated each failure instead of accepting the headline 35/100 (it would have
+mislabeled healthy brain data as broken); used `--scope=brain` as the true go-live signal; proved the
+MCP consumer path, not just the CLI; skipped the brain-mutating prefix re-instrument (functional +
+unchanged-code-path evidence sufficed); deferred the schema-pack per owner; kept the `skills/`
+routing-lint out of this brain entry (separate `TODOS.md` item).
+
+**Resulting changes:** operational acceptance (no brain mutation; `gbrain stats` unchanged at
+15/1,795/1,795 throughout); repo changes = this Entry 6 + the refreshed START HERE + the new go-live
+standing fact + a `TODOS.md` resolver-lint follow-up, on `fork-entry-6-golive-acceptance` →
+intra-fork **PR #6** (docs-only, no VERSION bump; stacks on PR #5; never the `garrytan` upstream).
+
+### Entry 5 — 2026-06-25 — Executed Entry 4's two operator runbooks (local Windows session)
+
+**Summary:** This was the local Windows resume Entry 4's runbooks were written for. Ran both
+on the owner's box (`win32`, local `~/.gbrain`, LM Studio serving). **Runbook 2 (cleanup) is
+done and clean.** **Runbook 1 (expansion auth fix) was executed and its verification FALSIFIED
+the inherited hypothesis** — setting `OLLAMA_API_KEY` does not fix the warning. That falsification
+is the real deliverable: it spares every future session the same dead end.
+
+**Runbook 1 — expansion auth fix: hypothesis DISPROVEN.**
+- Did: `setx OLLAMA_API_KEY ollama` + `$env:OLLAMA_API_KEY='ollama'` (persisted; confirmed a child
+  process inherits the inline value). A fresh **uncached** `gbrain query "…" --expand` *still*
+  logs `[ai.gateway] expansion disabled: [expand] invalid x-api-key`.
+- Ruled out, with evidence:
+  - **LM Studio is not rejecting auth** — a direct `Bearer ollama` chat to `qwen3.5-4b` → 200;
+    a `Bearer unauthenticated` chat → **also 200** (it accepts any/no token).
+  - **Model + capability present** — `qwen3.5-4b` is loaded; gbrain's *exact* expansion request
+    (a `response_format: json_schema` structured call) issued by hand → 200 with valid JSON.
+  - **Env propagation works** — an inline `$env:` value is seen by child processes.
+  - **Not auth at all** — embedding and expansion resolve auth through the *same*
+    `defaultResolveAuth(recipe, cfg.env, …)` (`gateway.ts:316` vs `:1876`); embedding **succeeds in
+    the same `gbrain query` process** that the expansion fails in. `invalid x-api-key` is
+    `normalizeAIError` passing through an underlying message (`errors.ts:54-66`), not a key gbrain
+    can be handed.
+- *Bounded per Entry 4:* stopped at the "deeper cause — don't rabbit-hole" line. Recorded as a
+  deprioritized follow-up (see the standing fact). **Core vector retrieval is unaffected.**
+  The `setx` is harmless (LM Studio ignores the value) — left in place, noted as a no-op.
+- **Real next lead (future session, not this one):** capture LM Studio's server-side request log
+  for the expansion call and diff it against the working hand-issued probe; suspect the
+  openai-compat custom-fetch wrapper (`gateway.ts:2153`).
+
+**Runbook 2 — transient-dir cleanup: DONE.**
+- Deleted `~/gbrain-corpus` (84 MB raw md), `~/gbrain-corpus-split` (84 MB failed 4 MB parts),
+  `~/gbrain-canary` — **~169 MB reclaimed** (matches Entry 4's ~168 MB estimate).
+- **Kept** `~/gbrain-corpus-final` (~4.4 MB proven <500 KB import source / re-import safety net)
+  and `test_corpus/` (5 source PDFs, gitignored — `git check-ignore` confirms).
+- Verified: the three dirs are gone; `gbrain stats` unchanged at **15 pages / 1,795 chunks /
+  1,795 embedded** (brain untouched).
+
+**Decisions:** treated the falsified runbook as a *success of the runbook design* (Entry 4 was
+authored blind in a remote container; runbook 1 existed precisely to test "set the key" against
+real hardware) and corrected the inherited START HERE + standing fact rather than leaving a
+disproven "fix" in the docs; left `setx` in place as a harmless no-op; did not chase the deeper
+expansion cause (bounded per Entry 4).
+
+**Resulting changes:** operational (169 MB reclaimed; brain unchanged); repo changes = this Entry 5
++ the refreshed START HERE block + the corrected expansion standing fact, on a new branch
+`fork-entry-5-runbooks` off `master` → intra-fork **PR #5** into `TojotheTerror/gbrain:master`
+(docs-only — no VERSION bump; never the `garrytan` upstream).
 
 ### Entry 4 — 2026-06-25 — Reboot-resume mechanism + two pending operator runbooks
 
