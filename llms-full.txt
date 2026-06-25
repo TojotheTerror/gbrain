@@ -141,6 +141,11 @@ use generic placeholders (`alice-example`, `acme-example`, `fund-a`).
 If you are a fork, regenerate `llms.txt` + `llms-full.txt` with your own URL base before
 publishing: `LLMS_REPO_BASE=https://raw.githubusercontent.com/your-org/your-fork/main bun run build:llms`.
 
+This fork keeps a living activity & decision log at
+[`docs/fork/FORK_ACTIVITY.md`](./docs/fork/FORK_ACTIVITY.md) — fork-specific divergence,
+standing facts, and a dated entry per session, separate from upstream `CHANGELOG.md`.
+**Resuming work? Read it first, then prepend a new dated entry.**
+
 ---
 
 ## CLAUDE.md
@@ -285,6 +290,14 @@ gbrain exists to fix. The rules that keep it from recurring:
 - **After any CLAUDE.md or reference-doc edit, run `bun run build:llms`** — the
   llms bundle inlines/links these (config in `scripts/llms-config.ts`); the
   freshness + budget test (`bun test test/build-llms.test.ts`) fails CI otherwise.
+
+## Fork activity & decisions (fork-specific)
+
+This is a fork (`TojotheTerror/gbrain`). Its divergence from upstream and the operational
+context a resuming session needs are recorded in **[`docs/fork/FORK_ACTIVITY.md`](docs/fork/FORK_ACTIVITY.md)**
+— a living, append-only log, separate from upstream `CHANGELOG.md`. It carries the standing
+fork facts (load-bearing patches, paused missions, tooling posture) plus a dated narrative per
+session. **Future sessions: read it FIRST, then prepend a new dated entry.**
 
 ## Search Mode (v0.32.3)
 
