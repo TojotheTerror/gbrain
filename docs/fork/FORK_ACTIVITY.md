@@ -113,4 +113,11 @@ this session on a `fork-activity-log` branch off `master` — so the doc records
 
 **Resulting commits/branches:** `223b17e` (warn fix) → `6a10c26` (test-drift fix), unified on
 origin branch `warn-docs-and-test-drift`, **merged to `master` via PR #2 (merge `6cf6729e`)**;
-this log on branch `fork-activity-log`.
+this log committed as `148b562c` on `fork-activity-log`, pushed to `origin` for an **intra-fork
+draft PR into `TojotheTerror/gbrain:master`** (fork-only — never the `garrytan/gbrain` upstream).
+The cloud-handed source patch (`forkactivitylog.patch`) was deleted post-commit.
+
+**Tooling note for future sessions:** `gh` is NOT installed locally and no API token is in the
+env, so fork PRs are opened by hand via the intra-fork compare URL
+(`https://github.com/TojotheTerror/gbrain/compare/TojotheTerror:master...TojotheTerror:<branch>?expand=1`)
+— never let GitHub default the base to the `garrytan/gbrain` upstream.
