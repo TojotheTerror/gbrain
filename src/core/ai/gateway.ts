@@ -2150,6 +2150,9 @@ function instantiateExpansion(recipe: Recipe, modelId: string, cfg: AIGatewayCon
       return createOpenAICompatible({
         name: recipe.id,
         baseURL: compat.baseURL,
+        // Fork: LM Studio requires response_format: json_schema (rejects json_object).
+        // Pass-through to the SDK provider option, opt-in per recipe (ollama). cf. b750d3f.
+        supportsStructuredOutputs: recipe.supports_structured_outputs,
         ...(compat.fetch ? { fetch: compat.fetch } : {}),
         ...auth,
       }).languageModel(modelId);

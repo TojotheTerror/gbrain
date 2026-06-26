@@ -5,6 +5,9 @@ export const ollama: Recipe = {
   name: 'Ollama (local)',
   tier: 'openai-compat',
   implementation: 'openai-compatible',
+  // Fork (LM Studio): emit response_format: json_schema for expansion — LM Studio
+  // rejects the SDK's default json_object. cf. b750d3f. See Recipe.supports_structured_outputs.
+  supports_structured_outputs: true,
   base_url_default: 'http://localhost:11434/v1',
   auth_env: {
     required: [], // Ollama runs unauthenticated locally; users pass `ollama` as the key.

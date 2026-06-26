@@ -9,7 +9,14 @@
 
 **Read this block first; it's the one-screen snapshot a resuming session needs.**
 
-### Current state (as of 2026-06-25, Entry 7)
+### Current state (as of 2026-06-25, Entry 8)
+- **Expansion FULLY WORKING (Entry 8) — Layer-2 fixed, Layer-3 confirmed live.** Multi-query
+  expansion now runs end-to-end on local qwen: routing (Layer-1, Entry 7) → `response_format:
+  json_schema` (Layer-2 fix) → **qwen honors the schema and returns rewrites (Layer-3, proven live)**.
+  Fix = a recipe flag `supports_structured_outputs: true` (ollama) threaded into the expansion call
+  site only (`gateway.ts instantiateExpansion`). New fork patch in the `b750d3f` lineage. Verified:
+  no `expansion disabled` warning; 4 coherent rewrites returned; retrieval @0.9998 with expansion on;
+  guard test + `test/ai/` 317-pass; typecheck clean; `gbrain stats` 15/1,795/1,795.
 - **Forward follow-ups worked (Entry 7).** Local repo synced to the cleaned master (Entries 1–6);
   **schema-pack v2 migration DONE** (data now `gbrain-base-v2`, config/data drift resolved, 0 pages
   retyped, `pack_upgrade` nudge cleared); **expansion root cause FOUND + Layer-1 fixed** (see below).
@@ -29,29 +36,21 @@
 - **Corpus import: Phase B COMPLETE.** 15 pages / 1,795 chunks, all embedded; clean `<book>/partNN`
   slugs.
 - **Schema pack: RESOLVED (Entry 7).** Data migrated to `gbrain-base-v2`; config == data; no nudge.
-- **Expansion: root cause FOUND; Layer-1 fixed, Layer-2 deferred (Entry 7).** The `invalid x-api-key`
-  was **Anthropic's** error — expansion was routing to the `anthropic:claude-haiku-4-5` *default*
-  (the `utility`-tier resolution outranks the config.json `expansion_model` fallback), hitting
-  `api.anthropic.com` with no key. **LM Studio was never involved** (corrects Entry 5's premise).
-  **Layer-1 fix:** `gbrain config set models.expansion ollama:qwen3.5-4b` → expansion now routes to
-  local qwen. **Layer-2 (deferred):** LM Studio then returns `400 'response_format.type' must be
-  'json_schema' or 'text'` — an SDK↔LM-Studio structured-output mismatch. Non-blocking; core
-  retrieval unaffected; tracked in `TODOS.md`.
+- **Expansion: FULLY RESOLVED across Entries 7–8.** Layer-1 (routing to the Anthropic default →
+  local qwen, Entry 7) + Layer-2 (`json_object` → `json_schema` via `supports_structured_outputs`,
+  Entry 8) + Layer-3 confirmed (qwen honors the schema). The Entry-5 `OLLAMA_API_KEY`/`invalid
+  x-api-key` framing was a wrong-service red herring — see Entries 7–8.
 - **PRs:** PR #4 (Entries 1–4), PR #5 (Entry 5), PR #6 (Entry 6) merged to master. PR #7 (Entry 7)
-  is the current intra-fork follow-up.
+  and PR #8 (Entry 8) are the current intra-fork follow-ups (PR #8 stacks on #7 until #7 merges).
 
 ### Pending operator actions
-- **None.** Go-live is accepted and the brain is healthy. All open items are non-blocking and
-  documented (expansion warning; schema-pack upgrade-available; a separate `skills/` routing-lint
-  cleanup filed in `TODOS.md`).
+- **None.** Go-live accepted; brain healthy; **expansion now fully working**. The one remaining
+  open item is non-blocking: the `skills/` `resolver_health` routing-lint cleanup (`TODOS.md`).
 
 ### Immediate next actions for a resuming session
-1. Nothing operational is pending — the brain is **go-live accepted**; schema is on v2.
-2. Optional non-blocking follow-ups (all in `TODOS.md`): **expansion Layer-2** (SDK↔LM-Studio
-   `response_format` mismatch — make the openai-compat `generateObject` send `json_schema`, or use a
-   compatible LM Studio build/model); the `skills/` `resolver_health` routing-lint cleanup. None
-   affect retrieval. The expansion "set OLLAMA_API_KEY / diff LM Studio request" leads from Entries
-   5–6 are **obsolete** (root cause was Anthropic-default routing, now fixed at Layer-1).
+1. Nothing operational is pending — brain is **go-live accepted**, schema on v2, **expansion working**.
+2. Only optional follow-up left (`TODOS.md`): the `skills/` `resolver_health` routing-lint cleanup
+   (brain-independent; `--scope=brain` is exit 0). Does not affect retrieval or expansion.
 3. **Open a NEW branch off `master`** for any new work; newest entry on top.
 
 ### Working conventions
@@ -64,12 +63,13 @@
 - **textbook→gbrain pipeline:** docling `--pdf-backend pypdfium2 --no-ocr` (default backend OOMs)
   → strip base64 `![...](data:...)` figures → split to <500 KB parts → `gbrain import`. docling is
   external pre-conversion, NOT on gbrain's import path.
-- **Query-expansion root cause (Entry 7):** `invalid x-api-key` was **Anthropic's** auth error —
-  expansion routed to the `anthropic:claude-haiku-4-5` default (utility-tier outranks the config
-  `expansion_model` fallback), NOT LM Studio. **Layer-1 fixed** via `gbrain config set
-  models.expansion ollama:qwen3.5-4b`. **Layer-2 deferred:** LM Studio `400 response_format.type`
-  (SDK structured-output mismatch). Core retrieval unaffected. The Entry-5/6 `OLLAMA_API_KEY` and
-  "diff the LM Studio request" leads are **obsolete**.
+- **Query-expansion: FULLY WORKING (Entries 7–8).** Two layers fixed: **Layer-1** (Entry 7) —
+  routing was hitting the `anthropic:claude-haiku-4-5` default (utility-tier outranks the config
+  `expansion_model` fallback); fixed via `gbrain config set models.expansion ollama:qwen3.5-4b`.
+  **Layer-2** (Entry 8) — the openai-compat `generateObject` sent `response_format: json_object`,
+  which LM Studio rejects (400); fixed via the `supports_structured_outputs` recipe flag (see the
+  new fork patch below). Layer-3 confirmed live (qwen honors the generated `json_schema`). The
+  Entry-5/6 `OLLAMA_API_KEY` / "diff the LM Studio request" leads were a wrong-service red herring.
 
 ---
 
@@ -108,6 +108,14 @@ Durable, load-bearing facts. Update in place when they change.
   - plus an ollama expansion touchpoint.
   - **Local fork only — NOT intended for an upstream PR.** Treat it as deliberate,
     forward-compat divergence; do not "fix" it by reverting.
+- **`supports_structured_outputs` is the 2nd load-bearing fork patch (Entry 8)** — LM Studio
+  query-expansion. A new optional `Recipe.supports_structured_outputs` field (`types.ts`), set
+  `true` on the `ollama` recipe, threaded into `instantiateExpansion`'s `createOpenAICompatible({
+  supportsStructuredOutputs })` call **only** (NOT chat/embedding). Makes the SDK emit
+  `response_format: json_schema` (LM Studio requires it; rejects the default `json_object`). Shared
+  `ollama` recipe also covers real Ollama (:11434), which accepts json_schema. Guard:
+  `test/ai/expansion-structured-output.serial.test.ts`. **Local fork divergence (cf. b750d3f); do
+  not revert.** A future runtime re-sync / SDK bump can silently drop it — the guard test catches that.
 - **Corpus-import mission: Phase B COMPLETE 2026-06-25.** All 5 `test_corpus` textbooks are
   imported + embedded (15 pages / 1,795 chunks; clean `<book>/partNN` slugs). Phase A proved the
   `b750d3f` asymmetric prefix on ingest (`search_document:` import / `search_query:` query);
@@ -160,6 +168,50 @@ Durable, load-bearing facts. Update in place when they change.
 ---
 
 ## Entries
+
+### Entry 8 — 2026-06-25 — Expansion Layer-2 fixed (`supports_structured_outputs`) + Layer-3 confirmed
+
+**Summary:** Cleared the last expansion blocker. Entry 7 fixed routing (Layer-1) and exposed
+**Layer-2**: the openai-compat `generateObject` sent `response_format: { type: 'json_object' }`,
+which LM Studio rejects (`400 must be 'json_schema' or 'text'`). Root cause pinned in the SDK
+(`@ai-sdk/openai-compatible@2.0.51`, `dist/index.js:534-542`): `supportsStructuredOutputs` defaults
+**false** → `json_object`; `true` → `json_schema` (which LM Studio accepts). **Fix:** a new fork
+patch — recipe flag `supports_structured_outputs` (cf. `b750d3f`). **Expansion now works end-to-end.**
+
+**The change (3 files, ONE call site):**
+- `src/core/ai/types.ts` — new optional `Recipe.supports_structured_outputs?: boolean` (pass-through
+  to the SDK's provider-level `supportsStructuredOutputs`).
+- `src/core/ai/recipes/ollama.ts` — `supports_structured_outputs: true`.
+- `src/core/ai/gateway.ts` — `supportsStructuredOutputs: recipe.supports_structured_outputs` added to
+  `createOpenAICompatible({…})` in **`instantiateExpansion`'s `openai-compatible` case only**.
+  `instantiateChat` (native-anthropic here) and `instantiateEmbedding` (load-bearing corpus path)
+  deliberately untouched.
+
+**Verify-first (before any ceremony, per plan):** applied the change to the repo + **surgically
+copied** the 3 files into the runtime (`~/node_modules/gbrain/src/core/ai/`, per-file — never
+`/MIR`; runtime was MD5-identical to repo pre-edit). Then the **live Layer-3 gate**:
+`gbrain query "<novel>" --expand` → no `expansion disabled` warning, and a transient instrument
+captured **qwen returning 4 coherent rewrites** (it honors the SDK-generated `json_schema` — Layer-3
+proven, not assumed). Retrieval with expansion ON: applied-causal-inference **@0.9998**; `gbrain
+stats` unchanged 15/1,795/1,795; instrument reverted; `b750d3f` prefix intact.
+
+**Then the ceremony (gated on the live pass):** added the regression guard
+`test/ai/expansion-structured-output.serial.test.ts` (flagged recipe → `json_schema`, plain recipe →
+`json_object`; the SDK even logs *"only supported with structuredOutputs"* on the plain case).
+`bun test test/ai/` → **317 pass / 0 fail**; `bun run typecheck` clean.
+
+**Decisions:** scoped to exactly one call site (expansion) — refused the "thread it through chat for
+consistency" over-reach (chat is anthropic here; speculative); kept the runtime + repo in sync via
+**surgical** per-file copy (not `/MIR`, which could skew the installed v0.42.51.0 against repo
+master); recorded the real-Ollama caveat (the shared recipe assumes :11434 also accepts json_schema —
+fork-local divergence like b750d3f). **The cloud session built + deterministically proved this but
+couldn't push (403 egress) and its artifacts weren't reachable locally — so the change was
+re-implemented here and the live Layer-3 gate (impossible in the cloud) was run before shipping.**
+
+**Resulting changes:** code (3 files) + the guard test + this Entry 8 + the new standing fork fact +
+refreshed START HERE + `TODOS.md` Layer-2 → done, on `fork-entry-8-expansion-fix` → intra-fork
+**PR #8** (stacks on PR #7). VERSION untouched (fork patches don't bump it, cf. b750d3f); never the
+`garrytan` upstream.
 
 ### Entry 7 — 2026-06-25 — Four forward follow-ups (sync · resolver-defer · schema-v2 · expansion root cause)
 
