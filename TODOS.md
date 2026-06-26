@@ -11,14 +11,11 @@
   (add the `skill-optimizer` RESOLVER row + reconcile `triggers:`/routing fixtures); `gbrain doctor
   --fix` auto-adds triggers but mutates many shared `SKILL.md` files. Deliberately NOT bundled into
   a brain go-live entry. Where: `skills/RESOLVER.md` + per-skill frontmatter.
-- [ ] **P3 — expansion Layer-2: SDK↔LM-Studio `response_format` mismatch (Entry 7).** Root cause of
-  the old `invalid x-api-key` was **Anthropic-default routing**, now fixed at Layer-1 (`gbrain config
-  set models.expansion ollama:qwen3.5-4b` — expansion routes to local qwen). Remaining: LM Studio
-  returns `400 'response_format.type' must be 'json_schema' or 'text'` because the openai-compat
-  `generateObject` sends a `response_format` shape it rejects (a hand-issued `json_schema` request
-  returns 200). Fix: make the openai-compat expansion path emit `response_format: json_schema`, or
-  use a compatible LM Studio build/model. Non-blocking (core retrieval works). The Entry-5/6
-  `OLLAMA_API_KEY` / "diff the LM Studio request" leads are **obsolete**.
+- [x] **DONE (Entry 8) — expansion Layer-2: `response_format` json_schema for LM Studio.** Fixed via
+  the `supports_structured_outputs` recipe flag (ollama) threaded into `instantiateExpansion`'s
+  `createOpenAICompatible({ supportsStructuredOutputs })`. Layer-3 confirmed live (qwen honors the
+  generated json_schema → returns rewrites). Guard: `test/ai/expansion-structured-output.serial.test.ts`.
+  Expansion now works end-to-end (Layer-1 routing + Layer-2 + Layer-3).
 - [x] **DONE (Entry 7) — schema-pack v2 migration.** Data migrated `gbrain-base@1.0.0 →
   gbrain-base-v2` via `gbrain jobs submit unify-types --allow-protected --params
   '{"target_pack":"gbrain-base-v2"}' --follow` (0 pages retyped; config/data drift resolved).

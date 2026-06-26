@@ -255,6 +255,17 @@ export interface Recipe {
   /** One-line description of setup (shown in wizard + env subcommand). */
   setup_hint?: string;
   /**
+   * Fork (LM Studio): pass-through to the SDK's `supportsStructuredOutputs`
+   * (`createOpenAICompatible` provider option). When true, the openai-compatible
+   * expansion path emits `response_format: { type: 'json_schema', json_schema }`,
+   * which LM Studio requires — it rejects the default `{ type: 'json_object' }`.
+   * On the shared `ollama` recipe this also covers real Ollama (:11434), which
+   * likewise accepts json_schema. Deliberate local divergence (cf. b750d3f);
+   * unset elsewhere → SDK default false (json_object). Honored only at the
+   * expansion call site in `instantiateExpansion`.
+   */
+  supports_structured_outputs?: boolean;
+  /**
    * v0.32 (D12=A): unified auth resolver across embed / expansion / chat
    * touchpoints. Returns the header name (`Authorization`, `api-key`, etc.)
    * and the full header value (for Bearer-style providers, include the
