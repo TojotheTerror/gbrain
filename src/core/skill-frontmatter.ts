@@ -82,7 +82,11 @@ export interface ParsedFrontmatter {
  * `readFileSync(path, 'utf-8')` at the boundary.
  */
 export function parseSkillFrontmatter(content: string): ParsedFrontmatter | null {
-  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  // CRLF-tolerant: normalize line endings so the LF-anchored regexes below
+  // match on Windows working trees (git stores LF but core.autocrlf checks
+  // out CRLF). Without this, the `^---\n` fence never matches `---\r\n` and
+  // every skill's frontmatter (triggers, brain_first, …) parses as absent.
+  const fmMatch = content.replace(/\r\n/g, '\n').match(/^---\n([\s\S]*?)\n---/);
   if (!fmMatch) return null;
   const raw = fmMatch[1];
   const out: ParsedFrontmatter = { raw };

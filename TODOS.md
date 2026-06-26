@@ -2,15 +2,12 @@
 
 ## Fork-specific follow-ups (TojotheTerror/gbrain — see docs/fork/FORK_ACTIVITY.md)
 
-- [ ] **P3 — `resolver_health` skill-routing lint (filed Entry 6, go-live triage).** `gbrain doctor`
-  full-run FAILs `resolver_health` with 1 error + 67 warnings: `skill-optimizer` is unreachable
-  (no row in `skills/RESOLVER.md`) plus MECE routing-coverage + routing-fixture lints across the
-  skill set. **Brain-independent** (excluded by `gbrain doctor --scope=brain`, which passes exit 0)
-  and believed pre-existing/upstream (NOT re-verified against a clean upstream clone; Entry 7
-  confirmed the *repo* `skills/` tree fails it too — not only a bundled/OpenClaw tree). Fix is a `skills/` metadata pass
-  (add the `skill-optimizer` RESOLVER row + reconcile `triggers:`/routing fixtures); `gbrain doctor
-  --fix` auto-adds triggers but mutates many shared `SKILL.md` files. Deliberately NOT bundled into
-  a brain go-live entry. Where: `skills/RESOLVER.md` + per-skill frontmatter.
+- [x] **DONE (Entry 9) — `resolver_health` was a CRLF parser bug, not a skills refactor.** The
+  68 issues were Windows-only false positives: `skill-frontmatter.ts` + `check-resolvable.ts` used
+  LF-only `/^---\n/` fence regexes that fail on CRLF working trees (`core.autocrlf`), so every skill
+  parsed as triggerless. Fixed by normalizing line endings in both parsers (CRLF-tolerant). Full
+  `gbrain doctor` now exits 0; resolver_health `ok` (52 skills reachable). Cross-platform bug fix
+  (upstream-worthy). The skill files were never the problem (their LF content is correct).
 - [x] **DONE (Entry 8) — expansion Layer-2: `response_format` json_schema for LM Studio.** Fixed via
   the `supports_structured_outputs` recipe flag (ollama) threaded into `instantiateExpansion`'s
   `createOpenAICompatible({ supportsStructuredOutputs })`. Layer-3 confirmed live (qwen honors the

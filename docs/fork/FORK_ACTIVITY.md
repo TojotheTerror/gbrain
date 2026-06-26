@@ -9,7 +9,16 @@
 
 **Read this block first; it's the one-screen snapshot a resuming session needs.**
 
-### Current state (as of 2026-06-25, Entry 8)
+### Current state (as of 2026-06-25, Entry 9)
+- **`resolver_health` RESOLVED (Entry 9) — it was a CRLF parser bug, not a skills problem.** The
+  full `gbrain doctor` now exits 0. The 68 "issues" (49 mece_gap + 1 unreachable + 18 routing) were
+  **false positives on Windows**: the two frontmatter parsers (`skill-frontmatter.ts`,
+  `check-resolvable.ts`) used LF-only fence regexes (`/^---\n/`) that fail on CRLF working trees
+  (`core.autocrlf` checks out CRLF; git stores LF) → every skill parsed as triggerless. Fix = make
+  both parsers CRLF-tolerant (2 one-line normalizations). **This is a genuine cross-platform bug fix
+  (upstream-worthy), not deliberate divergence like the LM-Studio patches.** Verified: resolver_health
+  `ok` (52 skills reachable); full doctor exit 0; reduced check-resolvable test fails 7→4 (residual 4
+  are pre-existing Windows path-string tests); typecheck clean.
 - **Expansion FULLY WORKING (Entry 8) — Layer-2 fixed, Layer-3 confirmed live.** Multi-query
   expansion now runs end-to-end on local qwen: routing (Layer-1, Entry 7) → `response_format:
   json_schema` (Layer-2 fix) → **qwen honors the schema and returns rewrites (Layer-3, proven live)**.
@@ -29,10 +38,9 @@
   1,795 chunks via the real MCP SDK); retrieval verified across **all 5 books** (each distinctive
   query hits its own book @0.91–0.93); the load-bearing `b750d3f` asymmetric prefix confirmed live
   in the runtime.
-- **Doctor full-run reads 35/100 / exit 1 — EXPECTED, not a regression.** The entire gap from the
-  65/100 brain-scope is the `skills/` routing lint (`resolver_health`: 1 err + 67 warn), which is
-  brain-independent and excluded by `--scope=brain`. Brain data is healthy (embed/retrieval 35/35;
-  the `brain_score` 45 is corpus-expected — split textbooks have no wikilinks/timeline/entity pages).
+- **Doctor full-run now EXIT 0 (Entry 9).** The old 35/100/exit-1 was the `resolver_health` CRLF
+  parser bug (now fixed). `brain_score` 45 remains corpus-expected (split textbooks have no
+  wikilinks/timeline/entity pages); `--scope=brain` exit 0; embed/retrieval 35/35.
 - **Corpus import: Phase B COMPLETE.** 15 pages / 1,795 chunks, all embedded; clean `<book>/partNN`
   slugs.
 - **Schema pack: RESOLVED (Entry 7).** Data migrated to `gbrain-base-v2`; config == data; no nudge.
@@ -40,17 +48,18 @@
   local qwen, Entry 7) + Layer-2 (`json_object` → `json_schema` via `supports_structured_outputs`,
   Entry 8) + Layer-3 confirmed (qwen honors the schema). The Entry-5 `OLLAMA_API_KEY`/`invalid
   x-api-key` framing was a wrong-service red herring — see Entries 7–8.
-- **PRs:** PR #4 (Entries 1–4), PR #5 (Entry 5), PR #6 (Entry 6) merged to master. PR #7 (Entry 7)
-  and PR #8 (Entry 8) are the current intra-fork follow-ups (PR #8 stacks on #7 until #7 merges).
+- **PRs:** PR #4 (Entries 1–4), PR #5 (Entry 5), PR #6 (Entry 6) merged to master. PR #7 (Entry 7),
+  PR #8 (Entry 8), PR #9 (Entry 9) are the current intra-fork follow-ups (each stacks on the prior
+  until merged).
 
 ### Pending operator actions
-- **None.** Go-live accepted; brain healthy; **expansion now fully working**. The one remaining
-  open item is non-blocking: the `skills/` `resolver_health` routing-lint cleanup (`TODOS.md`).
+- **None.** Go-live accepted; brain healthy; **expansion working; full doctor exit 0.** No open
+  fork follow-ups remain.
 
 ### Immediate next actions for a resuming session
-1. Nothing operational is pending — brain is **go-live accepted**, schema on v2, **expansion working**.
-2. Only optional follow-up left (`TODOS.md`): the `skills/` `resolver_health` routing-lint cleanup
-   (brain-independent; `--scope=brain` is exit 0). Does not affect retrieval or expansion.
+1. Nothing pending — brain **go-live accepted**, schema on v2, **expansion working**, **full doctor
+   exit 0**. All Entry 5–9 follow-ups are closed.
+2. **Open a NEW branch off `master`** for any new work; newest entry on top.
 3. **Open a NEW branch off `master`** for any new work; newest entry on top.
 
 ### Working conventions
@@ -123,17 +132,16 @@ Durable, load-bearing facts. Update in place when they change.
 - **Go-live ACCEPTED 2026-06-25 (Phase C, Entry 6).** Validated end-to-end: brain-scoped doctor
   exit 0; agent-facing MCP path proven (`gbrain serve` → `query`); 5/5 books retrieve to their own
   book @0.91–0.93. **Read the doctor score correctly:** use `gbrain doctor --scope=brain`
-  (**65/100, exit 0**) as the brain-health signal. The full `gbrain doctor` (**35/100, exit 1**) is
-  dragged down by `resolver_health` (1 err + 67 warn) — a **`skills/` routing-metadata lint,
-  brain-independent** (`skill-optimizer` unreachable + MECE/fixture gaps), believed pre-existing /
-  upstream (NOT re-verified against a clean upstream clone). It is NOT a brain regression. **Entry 7
-  note:** the cloud's claim that the *repo* `skills/` passes was disproven locally — the repo tree
-  fails `resolver_health` too; `--scope=brain` (exit 0) is the trustworthy signal, not a green full doctor. The `brain_score` 45 (links 0/25,
-  timeline 0/15, orphans 0/15) is **corpus-expected** — a split-textbook corpus has no
-  wikilinks/timeline/entity pages; embed/retrieval is a perfect 35/35. `pgvector` /
-  `embedding_width_consistency` "could not check / skipped" are benign **PGLite** introspection
-  limits. The `skills/` routing-lint cleanup is filed separately in `TODOS.md` — do NOT fold a
-  68-issue shared-`skills/` refactor into a brain entry.
+  (**65/100, exit 0**) as the brain-health signal. **Full `gbrain doctor` now also exits 0 (Entry
+  9)** — the old `resolver_health` failure (35/100/exit-1) was a **CRLF parser bug**, NOT a skills
+  problem: the LF-only frontmatter regexes in `skill-frontmatter.ts` + `check-resolvable.ts` failed
+  on Windows CRLF working trees, so every skill parsed as triggerless (49 false mece_gaps + the
+  skill-optimizer/routing issues). Fixed by making both parsers CRLF-tolerant. **This vindicates the
+  cloud's "repo skills are clean" claim** (it was on LF; the Entry-7 "disproof" was the Windows CRLF
+  artifact — same content, different line endings). The `brain_score` 45 (links 0/25, timeline 0/15,
+  orphans 0/15) is **corpus-expected** — a split-textbook corpus has no wikilinks/timeline/entity
+  pages; embed/retrieval is a perfect 35/35. `pgvector` / `embedding_width_consistency` "could not
+  check / skipped" are benign **PGLite** introspection limits.
 - **Textbook→gbrain ingest pipeline (hard-won — see Entry 3):** (1) `docling convert <pdf>
   --to md --no-ocr --pdf-backend pypdfium2` — the default `docling-parse` backend OOMs
   (`std::bad_alloc`) on large books; pypdfium2 doesn't. (2) **Strip base64 images** — docling
@@ -168,6 +176,44 @@ Durable, load-bearing facts. Update in place when they change.
 ---
 
 ## Entries
+
+### Entry 9 — 2026-06-25 — `resolver_health` resolved: it was a CRLF frontmatter-parser bug
+
+**Summary:** Resolved the last open fork follow-up. The `resolver_health` failure (full doctor
+35/100 / exit 1; 68 issues = 49 `mece_gap` + 1 `unreachable` + 13 `routing_miss` + 5
+`routing_fixture_lint`) was **not** a skills-content problem and **not** a 68-issue refactor — it was
+a **CRLF line-ending parser bug** that only surfaces on Windows working trees. Two-line fix; full
+doctor now exits 0.
+
+**Root cause (traced, not guessed):** two SKILL.md frontmatter parsers used **LF-only** fence
+regexes — `parseSkillFrontmatter` (`skill-frontmatter.ts:85`, `/^---\n…/`) and `extractTriggers`
+(`check-resolvable.ts:222`). git stores LF but `core.autocrlf=true` checks out **CRLF** on Windows,
+so `---\r\n` never matched `---\n` → frontmatter parsed as absent → **every** skill looked
+triggerless. That cascaded into: 49 false `mece_gap`s (`extractTriggers` → 0 triggers);
+`skill-optimizer` `unreachable` (its frontmatter triggers never loaded, and it has no RESOLVER.md
+row); and the routing-fixture misses (the trigger index was empty for those skills). The skill files
+themselves (LF, what git stores + CI/upstream see) were always fine.
+
+**Fix:** make both parsers CRLF-tolerant — normalize `content.replace(/\r\n/g, '\n')` before the
+LF-anchored regexes (`src/core/skill-frontmatter.ts`, `src/core/check-resolvable.ts`). 2 one-line
+edits. **This is a genuine cross-platform bug fix (upstream-worthy), unlike the deliberate-divergence
+LM-Studio fork patches** (`b750d3f`, `supports_structured_outputs`).
+
+**Verified:** `gbrain doctor` resolver_health → `ok` (52 skills, all reachable); **full doctor exit
+0** (Skill checks 95/100); the fix *reduced* `check-resolvable` test failures **7 → 4** (it fixed 3
+CRLF-affected tests, added none) — the residual 4 are pre-existing Windows `resolveSkillsDir`
+**path-string** tests (`\` vs `/`), present in the baseline and unrelated to line endings; typecheck
+clean.
+
+**Decisions:** fixed the *parser*, not the 49 skill files (their LF content is correct; editing them
+would "fix" a non-problem and risk corrupting it). Scoped to the two parsers that drive
+resolver_health (other CRLF-sensitive frontmatter parsers may exist — out of scope, noted). This
+also **vindicates the cloud's "repo skills are clean" claim** and explains the Entry-7 disagreement:
+same content, the cloud on LF vs this box on CRLF.
+
+**Resulting changes:** code (2 parser files) + this Entry 9 + refreshed START HERE + corrected
+go-live standing fact + `TODOS.md` resolver item → done, on `fork-entry-9-resolver-crlf` → intra-fork
+**PR #9** (stacks on PR #8). VERSION untouched; never the `garrytan` upstream.
 
 ### Entry 8 — 2026-06-25 — Expansion Layer-2 fixed (`supports_structured_outputs`) + Layer-3 confirmed
 
